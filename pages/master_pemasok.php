@@ -5,8 +5,21 @@ require_once '../layouts/sidebar.php';
 // Proses Hapus Data
 if (isset($_GET['delete'])) {
     $id = (int)$_GET['delete'];
-    $conn->query("DELETE FROM tb_pemasok WHERE id = $id");
-    echo "<script>window.location.href='master_pemasok.php';</script>";
+
+    // Cek apakah pemasok masih memiliki transaksi pembelian
+    $cek = $conn->query("SELECT COUNT(*) as total FROM tb_transaksi_pembelian WHERE id_pemasok = $id");
+    $row_cek = $cek->fetch_assoc();
+
+    if ($row_cek['total'] > 0) {
+        // Pemasok masih digunakan, tampilkan pesan error
+        echo "<script>
+            alert('Pemasok tidak dapat dihapus karena masih memiliki data transaksi pembelian yang terkait.');
+            window.location.href='master_pemasok.php';
+        </script>";
+    } else {
+        $conn->query("DELETE FROM tb_pemasok WHERE id = $id");
+        echo "<script>window.location.href='master_pemasok.php';</script>";
+    }
     exit;
 }
 

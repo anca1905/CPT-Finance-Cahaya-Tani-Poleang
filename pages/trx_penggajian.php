@@ -124,7 +124,7 @@ $history = $conn->query("
                     </div>
                     <div class="form-group">
                         <label>Pilih Karyawan</label>
-                        <select class="form-control" name="id_karyawan" required>
+                        <select class="form-control" name="id_karyawan" id="pilih_karyawan" required>
                             <option value="">-- Pilih Karyawan --</option>
                             <?php while($k = $karyawan->fetch_assoc()): ?>
                                 <option value="<?= $k['id'] ?>"><?= $k['nama_karyawan'] ?> - <?= $k['jabatan'] ?></option>
@@ -133,7 +133,15 @@ $history = $conn->query("
                     </div>
                     <div class="form-group">
                         <label>Jenis Pekerjaan</label>
-                        <input type="text" class="form-control" name="jenis_pekerjaan" placeholder="Contoh: Bongkar Muat / Kupas Kelapa" required>
+                        <select class="form-control" name="jenis_pekerjaan" required>
+                            <option value="">-- Pilih Jenis Pekerjaan --</option>
+                            <option value="Bongkar Muat">Bongkar Muat</option>
+                            <option value="Kupas Kelapa">Kupas Kelapa</option>
+                            <option value="Cungkil Kelapa">Cungkil Kelapa</option>
+                            <option value="Jemur Kopra">Jemur Kopra</option>
+                            <option value="Angkut Barang">Angkut Barang</option>
+                            <option value="Lainnya">Lainnya</option>
+                        </select>
                     </div>
                     <div class="form-row">
                         <div class="form-group col-md-4">
@@ -162,7 +170,21 @@ $history = $conn->query("
     </div>
 </div>
 
+<?php require_once '../layouts/footer.php'; ?>
+
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
 <script>
+// Initialize Select2 for Karyawan
+$(document).ready(function() {
+    $('#pilih_karyawan').select2({
+        dropdownParent: $('#modalTransaksi'),
+        width: '100%',
+        placeholder: '-- Pilih Karyawan --'
+    });
+});
+
 // Script Kalkulasi Otomatis THP
 document.addEventListener('DOMContentLoaded', function() {
     const qty = document.getElementById('qty');
@@ -177,9 +199,25 @@ document.addEventListener('DOMContentLoaded', function() {
         display.value = 'Rp ' + total.toLocaleString('id-ID');
     }
 
-    qty.addEventListener('input', hitungTotal);
-    tarif.addEventListener('input', hitungTotal);
+    if (qty && tarif) {
+        qty.addEventListener('input', hitungTotal);
+        tarif.addEventListener('input', hitungTotal);
+    }
 });
 </script>
 
-<?php require_once '../layouts/footer.php'; ?>
+<style>
+/* Adjust select2 inside bootstrap 4 */
+.select2-container .select2-selection--single {
+    height: calc(1.5em + .75rem + 2px);
+    border: 1px solid #d1d3e2;
+    border-radius: 0.35rem;
+}
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: calc(1.5em + .75rem + 2px);
+    color: #6e707e;
+}
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: calc(1.5em + .75rem + 2px);
+}
+</style>

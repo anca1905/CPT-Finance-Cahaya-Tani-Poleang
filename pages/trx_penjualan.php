@@ -81,11 +81,14 @@ if (isset($_GET['delete'])) {
 
 // Ambil Referensi Data
 $pelanggan = $conn->query("SELECT * FROM tb_pelanggan ORDER BY nama_pelanggan ASC");
-$barang = $conn->query("SELECT * FROM tb_barang ORDER BY nama_barang ASC");
+$barang = $conn->query("SELECT * FROM tb_barang WHERE nama_barang LIKE '%Kopra Putih%' OR nama_barang LIKE '%Kopra Edibel%' OR nama_barang LIKE '%Kopra Hitam%' OR nama_barang LIKE '%Arang%' ORDER BY nama_barang ASC");
 
 // Ambil Riwayat Transaksi
 $history = $conn->query("
-    SELECT t.*, p.nama_pelanggan 
+    SELECT t.*, p.nama_pelanggan,
+           (SELECT qty FROM tb_transaksi_penjualan_detail WHERE id_penjualan = t.id LIMIT 1) as qty,
+           (SELECT harga_satuan FROM tb_transaksi_penjualan_detail WHERE id_penjualan = t.id LIMIT 1) as harga_satuan,
+           (SELECT b.nama_barang FROM tb_transaksi_penjualan_detail d JOIN tb_barang b ON d.id_barang = b.id WHERE d.id_penjualan = t.id LIMIT 1) as nama_barang
     FROM tb_transaksi_penjualan t 
     JOIN tb_pelanggan p ON t.id_pelanggan = p.id 
     ORDER BY t.tanggal DESC, t.id DESC
@@ -112,6 +115,9 @@ $history = $conn->query("
                         <th>Tanggal</th>
                         <th>No Transaksi</th>
                         <th>Pelanggan</th>
+                        <th>Jenis Barang</th>
+                        <th>Qty (Kg)</th>
+                        <th>Harga/Kg</th>
                         <th>Total Harga</th>
                         <th>Status</th>
                         <th>Aksi</th>
@@ -123,6 +129,9 @@ $history = $conn->query("
                         <td><?= date('d/m/Y', strtotime($row['tanggal'])) ?></td>
                         <td><?= htmlspecialchars($row['no_transaksi']) ?></td>
                         <td><?= htmlspecialchars($row['nama_pelanggan']) ?></td>
+                        <td><?= htmlspecialchars($row['nama_barang'] ?? '') ?></td>
+                        <td><?= number_format($row['qty'] ?? 0, 0, ',', '.') ?></td>
+                        <td>Rp <?= number_format($row['harga_satuan'] ?? 0, 0, ',', '.') ?></td>
                         <td>Rp <?= number_format($row['total_harga'], 0, ',', '.') ?></td>
                         <td>
                             <span class="badge badge-<?= $row['status_bayar'] == 'Lunas' ? 'success' : 'warning' ?>">
@@ -194,8 +203,8 @@ $history = $conn->query("
                                 <thead class="thead-light">
                                     <tr>
                                         <th>Barang (Stok Tersedia)</th>
-                                        <th width="100">Qty</th>
-                                        <th width="150">Harga Satuan</th>
+                                        <th width="100">Qty (Kg)</th>
+                                        <th width="150">Harga/Kg</th>
                                         <th width="50">Aksi</th>
                                     </tr>
                                 </thead>

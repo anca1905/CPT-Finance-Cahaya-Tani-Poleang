@@ -47,9 +47,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_transaksi'])) {
                 
                 // Insert detail
                 $conn->query("INSERT INTO tb_transaksi_pembelian_detail (id_pembelian, id_barang, qty, harga_satuan, subtotal) VALUES ($id_pembelian, $id_b, $q, $h, $subtotal)");
-                
-                // Update Stok
-                $conn->query("UPDATE tb_barang SET stok_tersedia = stok_tersedia + $q WHERE id = $id_b");
             }
             
             $conn->commit();
@@ -68,25 +65,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_transaksi'])) {
 if (isset($_GET['delete'])) {
     if ($_SESSION['role'] == 'Admin') {
         $id_hapus = (int)$_GET['delete'];
-        // Mengembalikan stok dan menghapus transaksi (jurnal otomatis terhapus karena ON DELETE CASCADE/SET NULL, tapi lebih baik trigger/manual)
-        // Untuk kesederhanaan, kita ambil detail untuk reverse stok
-        $dtl = $conn->query("SELECT id_barang, qty FROM tb_transaksi_pembelian_detail WHERE id_pembelian = $id_hapus");
-        while($r = $dtl->fetch_assoc()) {
-            $conn->query("UPDATE tb_barang SET stok_tersedia = stok_tersedia - " . $r['qty'] . " WHERE id = " . $r['id_barang']);
-        }
+        // Menghapus transaksi (jurnal otomatis terhapus karena ON DELETE CASCADE/SET NULL)
         $conn->query("DELETE FROM tb_transaksi_pembelian WHERE id = $id_hapus");
-        echo "<script>alert('Transaksi berhasil dihapus dan stok dikembalikan.'); window.location.href='trx_pembelian.php';</script>";
+        echo "<script>alert('Transaksi berhasil dihapus.'); window.location.href='trx_pembelian.php';</script>";
         exit;
     }
 }
 
 // Ambil Referensi Data
 $pemasok = $conn->query("SELECT * FROM tb_pemasok ORDER BY nama_pemasok ASC");
-$barang = $conn->query("SELECT * FROM tb_barang ORDER BY nama_barang ASC");
+$barang = $conn->query("SELECT * FROM tb_barang WHERE nama_barang LIKE '%Kelapa Utuh%' ORDER BY nama_barang ASC");
 
 // Ambil Riwayat Transaksi
 $history = $conn->query("
-    SELECT t.*, p.nama_pemasok 
+    SELECT t.*, p.nama_pemasok, 
+           (SELECT qty FROM tb_transaksi_pembelian_detail WHERE id_pembelian = t.id LIMIT 1) as qty,
+           (SELECT harga_satuan FROM tb_transaksi_pembelian_detail WHERE id_pembelian = t.id LIMIT 1) as harga_satuan,
+           (SELECT b.nama_barang FROM tb_transaksi_pembelian_detail d JOIN tb_barang b ON d.id_barang = b.id WHERE d.id_pembelian = t.id LIMIT 1) as nama_barang
     FROM tb_transaksi_pembelian t 
     JOIN tb_pemasok p ON t.id_pemasok = p.id 
     ORDER BY t.tanggal DESC, t.id DESC
@@ -113,6 +108,9 @@ $history = $conn->query("
                         <th>Tanggal</th>
                         <th>No Transaksi</th>
                         <th>Pemasok</th>
+                        <th>Jenis Barang</th>
+                        <th>Qty</th>
+                        <th>Harga Satuan</th>
                         <th>Total Harga</th>
                         <th>Status</th>
                         <th>Aksi</th>
@@ -124,6 +122,9 @@ $history = $conn->query("
                         <td><?= date('d/m/Y', strtotime($row['tanggal'])) ?></td>
                         <td><?= htmlspecialchars($row['no_transaksi']) ?></td>
                         <td><?= htmlspecialchars($row['nama_pemasok']) ?></td>
+                        <td><?= htmlspecialchars($row['nama_barang']) ?></td>
+                        <td><?= number_format($row['qty'], 0, ',', '.') ?></td>
+                        <td>Rp <?= number_format($row['harga_satuan'], 0, ',', '.') ?></td>
                         <td>Rp <?= number_format($row['total_harga'], 0, ',', '.') ?></td>
                         <td>
                             <span class="badge badge-<?= $row['status_bayar'] == 'Lunas' ? 'success' : 'warning' ?>">
@@ -135,7 +136,7 @@ $history = $conn->query("
                                 <i class="fas fa-print"></i>
                             </button>
                             <?php if($_SESSION['role'] == 'Admin'): ?>
-                            <a href="?delete=<?= $row['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Yakin hapus transaksi ini? Stok akan dikembalikan.');">
+                            <a href="?delete=<?= $row['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Yakin hapus transaksi ini?');">
                                 <i class="fas fa-trash"></i>
                             </a>
                             <?php endif; ?>
@@ -185,7 +186,7 @@ $history = $conn->query("
                                 </select>
                             </div>
                             <div class="alert alert-info">
-                                <small><i class="fas fa-info-circle"></i> Stok barang akan otomatis bertambah setelah disimpan. Jurnal akan otomatis terbentuk.</small>
+                                <small><i class="fas fa-info-circle"></i> Jurnal akan otomatis terbentuk setelah disimpan.</small>
                             </div>
                         </div>
                         <div class="col-md-8">
@@ -197,7 +198,6 @@ $history = $conn->query("
                                         <th>Barang</th>
                                         <th width="100">Qty</th>
                                         <th width="150">Harga Satuan</th>
-                                        <th width="50">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -220,15 +220,9 @@ $history = $conn->query("
                                         <td>
                                             <input type="number" step="0.01" class="form-control" name="harga_satuan[]" required>
                                         </td>
-                                        <td>
-                                            <button type="button" class="btn btn-danger btn-sm hapus-baris"><i class="fas fa-times"></i></button>
-                                        </td>
                                     </tr>
                                 </tbody>
                             </table>
-                            <button type="button" class="btn btn-success btn-sm" id="tambahBaris">
-                                <i class="fas fa-plus"></i> Tambah Item
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -241,38 +235,6 @@ $history = $conn->query("
     </div>
 </div>
 
-<script>
-// Script untuk menambah dan menghapus baris dinamis
-document.addEventListener('DOMContentLoaded', function() {
-    const tabelBody = document.querySelector('#tabelBarang tbody');
-    const tambahBtn = document.getElementById('tambahBaris');
-    
-    // Copy baris pertama sebagai template
-    const barisTemplate = tabelBody.querySelector('tr').cloneNode(true);
-    barisTemplate.querySelector('input[name="qty[]"]').value = 1;
-    barisTemplate.querySelector('input[name="harga_satuan[]"]').value = '';
-    
-    tambahBtn.addEventListener('click', function() {
-        const trBaru = barisTemplate.cloneNode(true);
-        tabelBody.appendChild(trBaru);
-        attachHapusEvent();
-    });
-    
-    function attachHapusEvent() {
-        const hapusBtns = document.querySelectorAll('.hapus-baris');
-        hapusBtns.forEach(btn => {
-            btn.onclick = function() {
-                if(tabelBody.children.length > 1) {
-                    this.closest('tr').remove();
-                } else {
-                    alert('Minimal 1 barang harus dimasukkan.');
-                }
-            };
-        });
-    }
-    
-    attachHapusEvent();
-});
-</script>
+
 
 <?php require_once '../layouts/footer.php'; ?>
