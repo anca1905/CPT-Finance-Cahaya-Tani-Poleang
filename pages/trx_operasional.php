@@ -45,7 +45,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_transaksi'])) {
 if (isset($_GET['delete'])) {
     if ($_SESSION['role'] == 'Admin') {
         $id = (int)$_GET['delete'];
+        
+        // Ambil id_jurnal
+        $q_jurnal = $conn->query("SELECT id_jurnal FROM tb_biaya_operasional WHERE id = $id");
+        $id_jurnal = ($q_jurnal && $q_jurnal->num_rows > 0) ? $q_jurnal->fetch_assoc()['id_jurnal'] : null;
+        
+        // Hapus transaksi
         $conn->query("DELETE FROM tb_biaya_operasional WHERE id = $id");
+        
+        // Hapus jurnal terkait
+        if ($id_jurnal) {
+            $conn->query("DELETE FROM tb_jurnal_umum WHERE id = $id_jurnal");
+        }
+        
         echo "<script>alert('Transaksi dihapus'); window.location.href='trx_operasional.php';</script>";
         exit;
     }

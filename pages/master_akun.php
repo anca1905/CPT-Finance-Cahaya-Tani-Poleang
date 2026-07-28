@@ -56,75 +56,31 @@ $result = $conn->query("SELECT * FROM tb_akun ORDER BY kode_akun ASC");
                     </tr>
                 </thead>
                 <tbody>
-                    <?php while ($row = $result->fetch_assoc()): ?>
-                    <tr>
-                        <td><?= htmlspecialchars($row['kode_akun']) ?></td>
-                        <td><?= htmlspecialchars($row['nama_akun']) ?></td>
-                        <td><span class="badge badge-info"><?= htmlspecialchars($row['tipe']) ?></span></td>
-                        <td><?= htmlspecialchars($row['saldo_normal']) ?></td>
-                        <td>
-                            <button class="btn btn-sm btn-warning" data-toggle="modal" data-target="#editModal<?= $row['kode_akun'] ?>">
-                                <i class="fas fa-edit"></i> Edit
-                            </button>
-                            <a href="?delete=<?= $row['kode_akun'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Yakin ingin menghapus akun ini?');">
-                                <i class="fas fa-trash"></i> Hapus
-                            </a>
-                        </td>
-                    </tr>
-
-                    <!-- Edit Modal -->
-                    <div class="modal fade" id="editModal<?= $row['kode_akun'] ?>" tabindex="-1" role="dialog" aria-hidden="true">
-                        <div class="modal-dialog" role="document">
-                            <form method="POST">
-                                <div class="modal-content">
-                                    <div class="modal-header">
-                                        <h5 class="modal-title">Edit Data Akun</h5>
-                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                            <span aria-hidden="true">&times;</span>
-                                        </button>
-                                    </div>
-                                    <div class="modal-body">
-                                        <input type="hidden" name="old_kode_akun" value="<?= $row['kode_akun'] ?>">
-                                        <div class="form-group">
-                                            <label>Kode Akun</label>
-                                            <input type="text" class="form-control" name="kode_akun" value="<?= $row['kode_akun'] ?>" required>
-                                        </div>
-                                        <div class="form-group">
-                                            <label>Nama Akun</label>
-                                            <input type="text" class="form-control" name="nama_akun" value="<?= htmlspecialchars($row['nama_akun']) ?>" required>
-                                        </div>
-                                        <div class="form-group">
-                                            <label>Tipe</label>
-                                            <select class="form-control" name="tipe" required>
-                                                <option value="Aset" <?= $row['tipe'] == 'Aset' ? 'selected' : '' ?>>Aset</option>
-                                                <option value="Kewajiban" <?= $row['tipe'] == 'Kewajiban' ? 'selected' : '' ?>>Kewajiban</option>
-                                                <option value="Ekuitas" <?= $row['tipe'] == 'Ekuitas' ? 'selected' : '' ?>>Ekuitas</option>
-                                                <option value="Pendapatan" <?= $row['tipe'] == 'Pendapatan' ? 'selected' : '' ?>>Pendapatan</option>
-                                                <option value="Beban" <?= $row['tipe'] == 'Beban' ? 'selected' : '' ?>>Beban</option>
-                                                <option value="HPP" <?= $row['tipe'] == 'HPP' ? 'selected' : '' ?>>HPP</option>
-                                            </select>
-                                        </div>
-                                        <div class="form-group">
-                                            <label>Saldo Normal</label>
-                                            <select class="form-control" name="saldo_normal" required>
-                                                <option value="Debit" <?= $row['saldo_normal'] == 'Debit' ? 'selected' : '' ?>>Debit</option>
-                                                <option value="Kredit" <?= $row['saldo_normal'] == 'Kredit' ? 'selected' : '' ?>>Kredit</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
-                                        <button type="submit" name="edit" class="btn btn-primary">Simpan Perubahan</button>
-                                    </div>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
+                    <?php
+                    $akun_data = [];
+                    while ($row = $result->fetch_assoc()):
+                        $akun_data[] = $row;
+                        $safe_id = md5($row['kode_akun']);
+                    ?>
+                        <tr>
+                            <td><?= htmlspecialchars($row['kode_akun']) ?></td>
+                            <td><?= htmlspecialchars($row['nama_akun']) ?></td>
+                            <td><span class="badge badge-info"><?= htmlspecialchars($row['tipe']) ?></span></td>
+                            <td><?= htmlspecialchars($row['saldo_normal']) ?></td>
+                            <td class="text-nowrap">
+                                <button class="btn btn-sm btn-warning mr-1" data-toggle="modal" data-target="#editModal<?= $safe_id ?>">
+                                    <i class="fas fa-edit"></i> Edit
+                                </button>
+                                <a href="?delete=<?= $row['kode_akun'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Yakin ingin menghapus akun ini?');">
+                                    <i class="fas fa-trash"></i> Hapus
+                                </a>
+                            </td>
+                        </tr>
                     <?php endwhile; ?>
-                    <?php if($result->num_rows == 0): ?>
-                    <tr>
-                        <td colspan="5" class="text-center">Belum ada data akun</td>
-                    </tr>
+                    <?php if (empty($akun_data)): ?>
+                        <tr>
+                            <td colspan="5" class="text-center">Belum ada data akun</td>
+                        </tr>
                     <?php endif; ?>
                 </tbody>
             </table>
@@ -132,8 +88,59 @@ $result = $conn->query("SELECT * FROM tb_akun ORDER BY kode_akun ASC");
     </div>
 </div>
 
+<?php foreach ($akun_data as $row): $safe_id = md5($row['kode_akun']); ?>
+    <!-- Edit Modal -->
+    <div class="modal fade" id="editModal<?= $safe_id ?>" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <form method="POST">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Edit Data Akun</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" name="old_kode_akun" value="<?= $row['kode_akun'] ?>">
+                        <div class="form-group">
+                            <label>Kode Akun</label>
+                            <input type="text" class="form-control" name="kode_akun" value="<?= $row['kode_akun'] ?>" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Nama Akun</label>
+                            <input type="text" class="form-control" name="nama_akun" value="<?= htmlspecialchars($row['nama_akun']) ?>" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Tipe</label>
+                            <select class="form-control" name="tipe" required>
+                                <option value="Aset" <?= $row['tipe'] == 'Aset' ? 'selected' : '' ?>>Aset</option>
+                                <option value="Kewajiban" <?= $row['tipe'] == 'Kewajiban' ? 'selected' : '' ?>>Kewajiban</option>
+                                <option value="Ekuitas" <?= $row['tipe'] == 'Ekuitas' ? 'selected' : '' ?>>Ekuitas</option>
+                                <option value="Pendapatan" <?= $row['tipe'] == 'Pendapatan' ? 'selected' : '' ?>>Pendapatan</option>
+                                <option value="Beban" <?= $row['tipe'] == 'Beban' ? 'selected' : '' ?>>Beban</option>
+                                <option value="HPP" <?= $row['tipe'] == 'HPP' ? 'selected' : '' ?>>HPP</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Saldo Normal</label>
+                            <select class="form-control" name="saldo_normal" required>
+                                <option value="Debit" <?= $row['saldo_normal'] == 'Debit' ? 'selected' : '' ?>>Debit</option>
+                                <option value="Kredit" <?= $row['saldo_normal'] == 'Kredit' ? 'selected' : '' ?>>Kredit</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
+                        <button type="submit" name="edit" class="btn btn-primary">Simpan Perubahan</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+<?php endforeach; ?>
+
 <!-- Add Modal -->
-<div class="modal fade" id="addModal" tabindex="-1" role="dialog" aria-hidden="true">
+<div class="modal" id="addModal" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog" role="document">
         <form method="POST">
             <div class="modal-content">

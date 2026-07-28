@@ -11,8 +11,8 @@ if ($conn->connect_error) {
 
 session_start();
 
-function base_url($path = '') {
+function base_url($path = '')
+{
     // Sesuaikan dengan folder project Anda
-    return "http://localhost/ctp_finance/" . ltrim($path, '/');
+    return "http://localhost/sistem_ctp/" . ltrim($path, '/');
 }
-?>

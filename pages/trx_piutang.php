@@ -21,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_transaksi'])) {
             $deskripsi = "Pemberian Panjar/Piutang kepada Pemasok: $nama_pemasok (Ref: $no_transaksi)";
             $conn->query("INSERT INTO tb_jurnal_umum (no_referensi, tanggal, deskripsi, total_debit, total_kredit) VALUES ('$no_transaksi', '$tanggal', '$deskripsi', $nominal_panjar, $nominal_panjar)");
             $id_jurnal = $conn->insert_id;
-            
+
             // 2. Buat Detail Jurnal
             // Debit: 112 (Piutang CTP / Piutang Usaha)
             $conn->query("INSERT INTO tb_jurnal_detail (id_jurnal, kode_akun, posisi, nominal) VALUES ($id_jurnal, '112', 'Debit', $nominal_panjar)");
@@ -30,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_transaksi'])) {
 
             // 3. Simpan Transaksi Piutang
             $conn->query("INSERT INTO tb_piutang_petani (tanggal, id_pemasok, nominal_panjar, sisa_piutang, status, id_jurnal) VALUES ('$tanggal', $id_pemasok, $nominal_panjar, $sisa_piutang, 'Belum Lunas', $id_jurnal)");
-            
+
             $conn->commit();
             echo "<script>alert('Data Piutang / Panjar Berhasil Disimpan!'); window.location.href='trx_piutang.php';</script>";
             exit;
@@ -41,46 +41,60 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_transaksi'])) {
     }
 }
 
-// Proses Pelunasan Piutang (Sederhana - Bayar Penuh)
-if (isset($_GET['lunas'])) {
-    $id_piutang = (int)$_GET['lunas'];
-    
-    $q = $conn->query("
-        SELECT pt.*, p.nama_pemasok 
-        FROM tb_piutang_petani pt 
-        JOIN tb_pemasok p ON pt.id_pemasok = p.id 
-        WHERE pt.id = $id_piutang AND pt.status = 'Belum Lunas'
-    ");
-    
-    if ($q->num_rows > 0) {
-        $row = $q->fetch_assoc();
-        $no_transaksi = 'LUNAS-P-' . date('YmdHis');
-        $tanggal_lunas = date('Y-m-d');
-        $nominal = $row['sisa_piutang'];
-        $nama_pemasok = $row['nama_pemasok'];
+// Proses Pelunasan Piutang (Sebagian / Penuh)
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['bayar_piutang'])) {
+    $id_piutang = (int)$_POST['id_piutang'];
+    $nominal_bayar = (float)$_POST['nominal_bayar'];
 
-        $conn->begin_transaction();
-        try {
-            // Jurnal Pelunasan Piutang
-            $deskripsi = "Pelunasan Piutang/Panjar dari Pemasok: $nama_pemasok (Ref: $no_transaksi)";
-            $conn->query("INSERT INTO tb_jurnal_umum (no_referensi, tanggal, deskripsi, total_debit, total_kredit) VALUES ('$no_transaksi', '$tanggal_lunas', '$deskripsi', $nominal, $nominal)");
-            $id_jurnal_lunas = $conn->insert_id;
-            
-            // Debit: 111 (Kas)
-            $conn->query("INSERT INTO tb_jurnal_detail (id_jurnal, kode_akun, posisi, nominal) VALUES ($id_jurnal_lunas, '111', 'Debit', $nominal)");
-            // Kredit: 112 (Piutang CTP)
-            $conn->query("INSERT INTO tb_jurnal_detail (id_jurnal, kode_akun, posisi, nominal) VALUES ($id_jurnal_lunas, '112', 'Kredit', $nominal)");
+    if ($nominal_bayar > 0) {
+        $q = $conn->query("
+            SELECT pt.*, p.nama_pemasok 
+            FROM tb_piutang_petani pt 
+            JOIN tb_pemasok p ON pt.id_pemasok = p.id 
+            WHERE pt.id = $id_piutang AND pt.status = 'Belum Lunas'
+        ");
 
-            // Update Status
-            $conn->query("UPDATE tb_piutang_petani SET sisa_piutang = 0, status = 'Lunas' WHERE id = $id_piutang");
-            
-            $conn->commit();
-            echo "<script>alert('Piutang berhasil dilunasi!'); window.location.href='trx_piutang.php';</script>";
-            exit;
-        } catch (Exception $e) {
-            $conn->rollback();
-            echo "<script>alert('Gagal melunasi: " . $e->getMessage() . "');</script>";
+        if ($q->num_rows > 0) {
+            $row = $q->fetch_assoc();
+
+            // Cek jika bayar melebihi sisa
+            if ($nominal_bayar > $row['sisa_piutang']) {
+                echo "<script>alert('Nominal bayar melebihi sisa piutang!'); window.history.back();</script>";
+                exit;
+            }
+
+            $no_transaksi = 'LUNAS-P-' . date('YmdHis');
+            $tanggal_lunas = date('Y-m-d');
+            $nama_pemasok = $row['nama_pemasok'];
+
+            $sisa_baru = $row['sisa_piutang'] - $nominal_bayar;
+            $status_baru = ($sisa_baru <= 0) ? 'Lunas' : 'Belum Lunas';
+
+            $conn->begin_transaction();
+            try {
+                // Jurnal Pelunasan Piutang
+                $deskripsi = "Pembayaran Piutang dari Pemasok: $nama_pemasok (Ref: $no_transaksi)";
+                $conn->query("INSERT INTO tb_jurnal_umum (no_referensi, tanggal, deskripsi, total_debit, total_kredit) VALUES ('$no_transaksi', '$tanggal_lunas', '$deskripsi', $nominal_bayar, $nominal_bayar)");
+                $id_jurnal_lunas = $conn->insert_id;
+
+                // Debit: 111 (Kas)
+                $conn->query("INSERT INTO tb_jurnal_detail (id_jurnal, kode_akun, posisi, nominal) VALUES ($id_jurnal_lunas, '111', 'Debit', $nominal_bayar)");
+                // Kredit: 112 (Piutang CTP)
+                $conn->query("INSERT INTO tb_jurnal_detail (id_jurnal, kode_akun, posisi, nominal) VALUES ($id_jurnal_lunas, '112', 'Kredit', $nominal_bayar)");
+
+                // Update Sisa & Status
+                $conn->query("UPDATE tb_piutang_petani SET sisa_piutang = $sisa_baru, status = '$status_baru' WHERE id = $id_piutang");
+
+                $conn->commit();
+                echo "<script>alert('Pembayaran piutang berhasil dicatat!'); window.location.href='trx_piutang.php';</script>";
+                exit;
+            } catch (Exception $e) {
+                $conn->rollback();
+                echo "<script>alert('Gagal melunasi: " . $e->getMessage() . "');</script>";
+            }
         }
+    } else {
+        echo "<script>alert('Nominal harus lebih dari 0');</script>";
     }
 }
 
@@ -122,36 +136,79 @@ $history = $conn->query("
                     </tr>
                 </thead>
                 <tbody>
-                    <?php while($row = $history->fetch_assoc()): ?>
-                    <tr>
-                        <td><?= date('d/m/Y', strtotime($row['tanggal'])) ?></td>
-                        <td><?= htmlspecialchars($row['nama_pemasok']) ?></td>
-                        <td>Rp <?= number_format($row['nominal_panjar'], 0, ',', '.') ?></td>
-                        <td><b>Rp <?= number_format($row['sisa_piutang'], 0, ',', '.') ?></b></td>
-                        <td>
-                            <span class="badge badge-<?= $row['status'] == 'Lunas' ? 'success' : 'danger' ?>">
-                                <?= htmlspecialchars($row['status']) ?>
-                            </span>
-                        </td>
-                        <td>
-                            <?php if($row['status'] == 'Belum Lunas'): ?>
-                            <a href="?lunas=<?= $row['id'] ?>" class="btn btn-sm btn-success" onclick="return confirm('Yakin ingin menandai piutang ini sebagai LUNAS SEPENUHNYA? (Sistem akan membuat jurnal kas masuk)');">
-                                <i class="fas fa-check"></i> Pelunasan Penuh
-                            </a>
-                            <?php else: ?>
-                            <button class="btn btn-sm btn-secondary" disabled>Selesai</button>
-                            <?php endif; ?>
-                        </td>
-                    </tr>
+                    <?php
+                    $modals = '';
+                    while ($row = $history->fetch_assoc()):
+                    ?>
+                        <tr>
+                            <td><?= date('d/m/Y', strtotime($row['tanggal'])) ?></td>
+                            <td><?= htmlspecialchars($row['nama_pemasok']) ?></td>
+                            <td>Rp <?= number_format($row['nominal_panjar'], 0, ',', '.') ?></td>
+                            <td><b>Rp <?= number_format($row['sisa_piutang'], 0, ',', '.') ?></b></td>
+                            <td>
+                                <span class="badge badge-<?= $row['status'] == 'Lunas' ? 'success' : 'danger' ?>">
+                                    <?= htmlspecialchars($row['status']) ?>
+                                </span>
+                            </td>
+                            <td>
+                                <?php if ($row['status'] == 'Belum Lunas'):
+                                    $modals .= '
+                                <div class="modal fade" id="modalBayar' . $row['id'] . '" tabindex="-1" role="dialog" aria-hidden="true">
+                                    <div class="modal-dialog" role="document">
+                                        <form method="POST">
+                                            <div class="modal-content">
+                                                <div class="modal-header bg-success text-white">
+                                                    <h5 class="modal-title">Pembayaran Piutang / Panjar</h5>
+                                                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                                                        <span aria-hidden="true">&times;</span>
+                                                    </button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <input type="hidden" name="id_piutang" value="' . $row['id'] . '">
+                                                    <div class="form-group">
+                                                        <label>Nama Pemasok</label>
+                                                        <input type="text" class="form-control" value="' . htmlspecialchars($row['nama_pemasok']) . '" readonly>
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label>Sisa Piutang Saat Ini</label>
+                                                        <input type="text" class="form-control" value="Rp ' . number_format($row['sisa_piutang'], 0, ',', '.') . '" readonly>
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label>Jumlah Bayar (Rp)</label>
+                                                        <input type="number" class="form-control" name="nominal_bayar" max="' . $row['sisa_piutang'] . '" required>
+                                                        <small class="text-muted">Masukkan nominal yang dibayar. Otomatis lunas jika dibayar penuh.</small>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
+                                                    <button type="submit" name="bayar_piutang" class="btn btn-success">Simpan Pembayaran</button>
+                                                </div>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>';
+                                ?>
+                                    <button class="btn btn-sm btn-success" data-toggle="modal" data-target="#modalBayar<?= $row['id'] ?>">
+                                        <i class="fas fa-hand-holding-usd"></i> Bayar
+                                    </button>
+                                <?php else: ?>
+                                    <button class="btn btn-sm btn-secondary" disabled>Selesai</button>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
                     <?php endwhile; ?>
-                    <?php if($history->num_rows == 0): ?>
-                    <tr><td colspan="6" class="text-center">Belum ada data panjar / piutang</td></tr>
+                    <?php if ($history->num_rows == 0): ?>
+                        <tr>
+                            <td colspan="6" class="text-center">Belum ada data panjar / piutang</td>
+                        </tr>
                     <?php endif; ?>
                 </tbody>
             </table>
         </div>
     </div>
 </div>
+
+<?= $modals ?? '' ?>
 
 <!-- Modal Tambah Piutang -->
 <div class="modal fade" id="modalTransaksi" tabindex="-1" role="dialog" aria-hidden="true">
@@ -173,7 +230,7 @@ $history = $conn->query("
                         <label>Pilih Pemasok / Petani</label>
                         <select class="form-control" name="id_pemasok" required>
                             <option value="">-- Pilih Pemasok --</option>
-                            <?php while($p = $pemasok->fetch_assoc()): ?>
+                            <?php while ($p = $pemasok->fetch_assoc()): ?>
                                 <option value="<?= $p['id'] ?>"><?= $p['nama_pemasok'] ?></option>
                             <?php endwhile; ?>
                         </select>

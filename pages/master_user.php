@@ -65,90 +65,94 @@ $result = $conn->query("SELECT * FROM tb_users ORDER BY id DESC");
                     </tr>
                 </thead>
                 <tbody>
-                    <?php 
+                    <?php
                     $no = 1;
-                    while ($row = $result->fetch_assoc()): 
+                    $user_data = [];
+                    while ($row = $result->fetch_assoc()):
+                        $user_data[] = $row;
                     ?>
-                    <tr>
-                        <td><?= $no++ ?></td>
-                        <td><?= htmlspecialchars($row['nama_lengkap']) ?></td>
-                        <td><?= htmlspecialchars($row['username']) ?></td>
-                        <td>
-                            <?php 
-                            if ($row['role'] == 'Admin') {
-                                echo '<span class="badge badge-danger">Admin</span>';
-                            } elseif ($row['role'] == 'Pimpinan') {
-                                echo '<span class="badge badge-success">Pimpinan</span>';
-                            } else {
-                                echo '<span class="badge badge-info">Keuangan</span>';
-                            }
-                            ?>
-                        </td>
-                        <td>
-                            <button class="btn btn-sm btn-warning" data-toggle="modal" data-target="#editModal<?= $row['id'] ?>">
-                                <i class="fas fa-edit"></i> Edit
-                            </button>
-                            <?php if($row['id'] != $_SESSION['user_id']): ?>
-                            <a href="?delete=<?= $row['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Yakin ingin menghapus user ini?');">
-                                <i class="fas fa-trash"></i> Hapus
-                            </a>
-                            <?php endif; ?>
-                        </td>
-                    </tr>
-
-                    <!-- Edit Modal -->
-                    <div class="modal fade" id="editModal<?= $row['id'] ?>" tabindex="-1" role="dialog" aria-hidden="true">
-                        <div class="modal-dialog" role="document">
-                            <form method="POST">
-                                <div class="modal-content">
-                                    <div class="modal-header">
-                                        <h5 class="modal-title">Edit Data User</h5>
-                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                            <span aria-hidden="true">&times;</span>
-                                        </button>
-                                    </div>
-                                    <div class="modal-body">
-                                        <input type="hidden" name="id" value="<?= $row['id'] ?>">
-                                        <div class="form-group">
-                                            <label>Nama Lengkap</label>
-                                            <input type="text" class="form-control" name="nama_lengkap" value="<?= htmlspecialchars($row['nama_lengkap']) ?>" required>
-                                        </div>
-                                        <div class="form-group">
-                                            <label>Username</label>
-                                            <input type="text" class="form-control" name="username" value="<?= htmlspecialchars($row['username']) ?>" required>
-                                        </div>
-                                        <div class="form-group">
-                                            <label>Password <small class="text-danger">(Kosongkan jika tidak ingin diubah)</small></label>
-                                            <input type="password" class="form-control" name="password" placeholder="Password baru">
-                                        </div>
-                                        <div class="form-group">
-                                            <label>Role / Hak Akses</label>
-                                            <select class="form-control" name="role" required>
-                                                <option value="Admin" <?= $row['role'] == 'Admin' ? 'selected' : '' ?>>Admin</option>
-                                                <option value="Keuangan" <?= $row['role'] == 'Keuangan' ? 'selected' : '' ?>>Keuangan</option>
-                                                <option value="Pimpinan" <?= $row['role'] == 'Pimpinan' ? 'selected' : '' ?>>Pimpinan</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
-                                        <button type="submit" name="edit" class="btn btn-primary">Simpan Perubahan</button>
-                                    </div>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
+                        <tr>
+                            <td><?= $no++ ?></td>
+                            <td><?= htmlspecialchars($row['nama_lengkap']) ?></td>
+                            <td><?= htmlspecialchars($row['username']) ?></td>
+                            <td>
+                                <?php
+                                if ($row['role'] == 'Admin') {
+                                    echo '<span class="badge badge-danger">Admin</span>';
+                                } elseif ($row['role'] == 'Pimpinan') {
+                                    echo '<span class="badge badge-success">Pimpinan</span>';
+                                } else {
+                                    echo '<span class="badge badge-info">Keuangan</span>';
+                                }
+                                ?>
+                            </td>
+                            <td class="text-nowrap">
+                                <button class="btn btn-sm btn-warning mr-1" data-toggle="modal" data-target="#editModal<?= $row['id'] ?>">
+                                    <i class="fas fa-edit"></i> Edit
+                                </button>
+                                <?php if ($row['id'] != $_SESSION['user_id']): ?>
+                                    <a href="?delete=<?= $row['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Yakin ingin menghapus user ini?');">
+                                        <i class="fas fa-trash"></i> Hapus
+                                    </a>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
                     <?php endwhile; ?>
-                    <?php if($result->num_rows == 0): ?>
-                    <tr>
-                        <td colspan="5" class="text-center">Belum ada data user</td>
-                    </tr>
+                    <?php if (empty($user_data)): ?>
+                        <tr>
+                            <td colspan="5" class="text-center">Belum ada data user</td>
+                        </tr>
                     <?php endif; ?>
                 </tbody>
             </table>
         </div>
     </div>
 </div>
+
+<?php foreach ($user_data as $row): ?>
+    <!-- Edit Modal -->
+    <div class="modal fade" id="editModal<?= $row['id'] ?>" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <form method="POST">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Edit Data User</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" name="id" value="<?= $row['id'] ?>">
+                        <div class="form-group">
+                            <label>Nama Lengkap</label>
+                            <input type="text" class="form-control" name="nama_lengkap" value="<?= htmlspecialchars($row['nama_lengkap']) ?>" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Username</label>
+                            <input type="text" class="form-control" name="username" value="<?= htmlspecialchars($row['username']) ?>" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Password <small class="text-danger">(Kosongkan jika tidak ingin diubah)</small></label>
+                            <input type="password" class="form-control" name="password" placeholder="Password baru">
+                        </div>
+                        <div class="form-group">
+                            <label>Role / Hak Akses</label>
+                            <select class="form-control" name="role" required>
+                                <option value="Admin" <?= $row['role'] == 'Admin' ? 'selected' : '' ?>>Admin</option>
+                                <option value="Keuangan" <?= $row['role'] == 'Keuangan' ? 'selected' : '' ?>>Keuangan</option>
+                                <option value="Pimpinan" <?= $row['role'] == 'Pimpinan' ? 'selected' : '' ?>>Pimpinan</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
+                        <button type="submit" name="edit" class="btn btn-primary">Simpan Perubahan</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+<?php endforeach; ?>
 
 <!-- Add Modal -->
 <div class="modal fade" id="addModal" tabindex="-1" role="dialog" aria-hidden="true">

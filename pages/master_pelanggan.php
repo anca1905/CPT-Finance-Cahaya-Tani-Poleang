@@ -27,7 +27,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 }
 
 // Ambil Data Pelanggan
-$result = $conn->query("SELECT * FROM tb_pelanggan ORDER BY id DESC");
+$search = isset($_GET['search']) ? $conn->real_escape_string($_GET['search']) : '';
+
+if ($search !== '') {
+    $result = $conn->query("SELECT * FROM tb_pelanggan WHERE nama_pelanggan LIKE '%$search%' ORDER BY id DESC");
+} else {
+    $result = $conn->query("SELECT * FROM tb_pelanggan ORDER BY id DESC");
+}
 ?>
 
 <!-- Page Heading -->
@@ -39,8 +45,23 @@ $result = $conn->query("SELECT * FROM tb_pelanggan ORDER BY id DESC");
 </div>
 
 <div class="card shadow mb-4">
-    <div class="card-header py-3">
+    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
         <h6 class="m-0 font-weight-bold text-primary">Daftar Pelanggan (Customer)</h6>
+        <form method="GET" class="form-inline my-2 my-lg-0">
+            <div class="input-group">
+                <input type="text" name="search" class="form-control form-control-sm bg-light border-1" placeholder="Cari nama..." value="<?= htmlspecialchars($search) ?>">
+                <div class="input-group-append">
+                    <button class="btn btn-primary btn-sm" type="submit">
+                        <i class="fas fa-search fa-sm"></i>
+                    </button>
+                    <?php if ($search !== ''): ?>
+                        <a href="master_pelanggan.php" class="btn btn-secondary btn-sm" title="Reset Pencarian">
+                            <i class="fas fa-undo fa-sm"></i>
+                        </a>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </form>
     </div>
     <div class="card-body">
         <div class="table-responsive">
@@ -55,70 +76,74 @@ $result = $conn->query("SELECT * FROM tb_pelanggan ORDER BY id DESC");
                     </tr>
                 </thead>
                 <tbody>
-                    <?php 
+                    <?php
                     $no = 1;
-                    while ($row = $result->fetch_assoc()): 
+                    $pelanggan_data = [];
+                    while ($row = $result->fetch_assoc()):
+                        $pelanggan_data[] = $row;
                     ?>
-                    <tr>
-                        <td><?= $no++ ?></td>
-                        <td><?= htmlspecialchars($row['nama_pelanggan']) ?></td>
-                        <td><?= htmlspecialchars($row['no_hp']) ?></td>
-                        <td><?= htmlspecialchars($row['alamat']) ?></td>
-                        <td>
-                            <button class="btn btn-sm btn-warning" data-toggle="modal" data-target="#editModal<?= $row['id'] ?>">
-                                <i class="fas fa-edit"></i> Edit
-                            </button>
-                            <a href="?delete=<?= $row['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Yakin ingin menghapus pelanggan ini?');">
-                                <i class="fas fa-trash"></i> Hapus
-                            </a>
-                        </td>
-                    </tr>
-
-                    <!-- Edit Modal -->
-                    <div class="modal fade" id="editModal<?= $row['id'] ?>" tabindex="-1" role="dialog" aria-hidden="true">
-                        <div class="modal-dialog" role="document">
-                            <form method="POST">
-                                <div class="modal-content">
-                                    <div class="modal-header">
-                                        <h5 class="modal-title">Edit Data Pelanggan</h5>
-                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                            <span aria-hidden="true">&times;</span>
-                                        </button>
-                                    </div>
-                                    <div class="modal-body">
-                                        <input type="hidden" name="id" value="<?= $row['id'] ?>">
-                                        <div class="form-group">
-                                            <label>Nama Pelanggan</label>
-                                            <input type="text" class="form-control" name="nama_pelanggan" value="<?= htmlspecialchars($row['nama_pelanggan']) ?>" required>
-                                        </div>
-                                        <div class="form-group">
-                                            <label>No. Handphone</label>
-                                            <input type="text" class="form-control" name="no_hp" value="<?= htmlspecialchars($row['no_hp']) ?>">
-                                        </div>
-                                        <div class="form-group">
-                                            <label>Alamat</label>
-                                            <textarea class="form-control" name="alamat" rows="3"><?= htmlspecialchars($row['alamat']) ?></textarea>
-                                        </div>
-                                    </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
-                                        <button type="submit" name="edit" class="btn btn-primary">Simpan Perubahan</button>
-                                    </div>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
+                        <tr>
+                            <td><?= $no++ ?></td>
+                            <td><?= htmlspecialchars($row['nama_pelanggan']) ?></td>
+                            <td><?= htmlspecialchars($row['no_hp']) ?></td>
+                            <td><?= htmlspecialchars($row['alamat']) ?></td>
+                            <td class="text-nowrap">
+                                <button class="btn btn-sm btn-warning mr-1" data-toggle="modal" data-target="#editModal<?= $row['id'] ?>">
+                                    <i class="fas fa-edit"></i> Edit
+                                </button>
+                                <a href="?delete=<?= $row['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Yakin ingin menghapus pelanggan ini?');">
+                                    <i class="fas fa-trash"></i> Hapus
+                                </a>
+                            </td>
+                        </tr>
                     <?php endwhile; ?>
-                    <?php if($result->num_rows == 0): ?>
-                    <tr>
-                        <td colspan="5" class="text-center">Belum ada data pelanggan</td>
-                    </tr>
+                    <?php if (empty($pelanggan_data)): ?>
+                        <tr>
+                            <td colspan="5" class="text-center">Belum ada data pelanggan</td>
+                        </tr>
                     <?php endif; ?>
                 </tbody>
             </table>
         </div>
     </div>
 </div>
+
+<?php foreach ($pelanggan_data as $row): ?>
+    <!-- Edit Modal -->
+    <div class="modal fade" id="editModal<?= $row['id'] ?>" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <form method="POST">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Edit Data Pelanggan</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" name="id" value="<?= $row['id'] ?>">
+                        <div class="form-group">
+                            <label>Nama Pelanggan</label>
+                            <input type="text" class="form-control" name="nama_pelanggan" value="<?= htmlspecialchars($row['nama_pelanggan']) ?>" required>
+                        </div>
+                        <div class="form-group">
+                            <label>No. Handphone</label>
+                            <input type="text" class="form-control" name="no_hp" value="<?= htmlspecialchars($row['no_hp']) ?>">
+                        </div>
+                        <div class="form-group">
+                            <label>Alamat</label>
+                            <textarea class="form-control" name="alamat" rows="3"><?= htmlspecialchars($row['alamat']) ?></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
+                        <button type="submit" name="edit" class="btn btn-primary">Simpan Perubahan</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+<?php endforeach; ?>
 
 <!-- Add Modal -->
 <div class="modal fade" id="addModal" tabindex="-1" role="dialog" aria-hidden="true">

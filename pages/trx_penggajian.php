@@ -46,6 +46,25 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_transaksi'])) {
     }
 }
 
+// Proses Hapus (Opsional/Admin)
+if (isset($_GET['delete'])) {
+    if ($_SESSION['role'] == 'Admin') {
+        $id = (int)$_GET['delete'];
+        
+        $q_jurnal = $conn->query("SELECT id_jurnal FROM tb_penggajian WHERE id = $id");
+        $id_jurnal = ($q_jurnal && $q_jurnal->num_rows > 0) ? $q_jurnal->fetch_assoc()['id_jurnal'] : null;
+        
+        $conn->query("DELETE FROM tb_penggajian WHERE id = $id");
+        
+        if ($id_jurnal) {
+            $conn->query("DELETE FROM tb_jurnal_umum WHERE id = $id_jurnal");
+        }
+        
+        echo "<script>alert('Data Penggajian berhasil dihapus'); window.location.href='trx_penggajian.php';</script>";
+        exit;
+    }
+}
+
 // Ambil Referensi Data
 $karyawan = $conn->query("SELECT * FROM tb_karyawan ORDER BY nama_karyawan ASC");
 
@@ -81,6 +100,9 @@ $history = $conn->query("
                         <th>Qty</th>
                         <th>Tarif Satuan</th>
                         <th>Total Upah</th>
+                        <?php if($_SESSION['role'] == 'Admin'): ?>
+                        <th>Aksi</th>
+                        <?php endif; ?>
                     </tr>
                 </thead>
                 <tbody>
@@ -95,10 +117,17 @@ $history = $conn->query("
                         <td><?= htmlspecialchars($row['qty']) ?></td>
                         <td>Rp <?= number_format($row['tarif_satuan'], 0, ',', '.') ?></td>
                         <td><b>Rp <?= number_format($row['total_upah'], 0, ',', '.') ?></b></td>
+                        <?php if($_SESSION['role'] == 'Admin'): ?>
+                        <td>
+                            <a href="?delete=<?= $row['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Yakin ingin menghapus data penggajian ini?');">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                        </td>
+                        <?php endif; ?>
                     </tr>
                     <?php endwhile; ?>
                     <?php if($history->num_rows == 0): ?>
-                    <tr><td colspan="6" class="text-center">Belum ada riwayat penggajian</td></tr>
+                    <tr><td colspan="<?= ($_SESSION['role'] == 'Admin') ? '7' : '6' ?>" class="text-center">Belum ada riwayat penggajian</td></tr>
                     <?php endif; ?>
                 </tbody>
             </table>
@@ -172,8 +201,8 @@ $history = $conn->query("
 
 <?php require_once '../layouts/footer.php'; ?>
 
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<link href="../assets/vendor/select2/select2.min.css" rel="stylesheet" />
+<script src="../assets/vendor/select2/select2.min.js"></script>
 
 <script>
 // Initialize Select2 for Karyawan
