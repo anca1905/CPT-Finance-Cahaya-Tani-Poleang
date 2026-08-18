@@ -27,13 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 }
 
 // Ambil Data Karyawan
-$search = isset($_GET['search']) ? $conn->real_escape_string($_GET['search']) : '';
-
-if ($search !== '') {
-    $result = $conn->query("SELECT * FROM tb_karyawan WHERE nama_karyawan LIKE '%$search%' ORDER BY id DESC");
-} else {
-    $result = $conn->query("SELECT * FROM tb_karyawan ORDER BY id DESC");
-}
+$result = $conn->query("SELECT * FROM tb_karyawan ORDER BY id DESC");
 ?>
 
 <!-- Page Heading -->
@@ -45,23 +39,8 @@ if ($search !== '') {
 </div>
 
 <div class="card shadow mb-4">
-    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+    <div class="card-header py-3">
         <h6 class="m-0 font-weight-bold text-primary">Daftar Karyawan (Staff / Pekerja)</h6>
-        <form method="GET" class="form-inline my-2 my-lg-0">
-            <div class="input-group">
-                <input type="text" name="search" class="form-control form-control-sm bg-light border-1" placeholder="Cari nama..." value="<?= htmlspecialchars($search) ?>">
-                <div class="input-group-append">
-                    <button class="btn btn-primary btn-sm" type="submit">
-                        <i class="fas fa-search fa-sm"></i>
-                    </button>
-                    <?php if ($search !== ''): ?>
-                        <a href="master_karyawan.php" class="btn btn-secondary btn-sm" title="Reset Pencarian">
-                            <i class="fas fa-undo fa-sm"></i>
-                        </a>
-                    <?php endif; ?>
-                </div>
-            </div>
-        </form>
     </div>
     <div class="card-body">
         <div class="table-responsive">

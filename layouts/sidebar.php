@@ -74,6 +74,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 data-parent="#accordionSidebar">
                 <div class="bg-white py-2 collapse-inner rounded">
                     <a class="collapse-item" href="<?= base_url('pages/trx_pembelian.php') ?>">Pembelian</a>
+                    <a class="collapse-item" href="<?= base_url('pages/trx_bayar_hutang.php') ?>">Pelunasan Hutang</a>
                     <a class="collapse-item" href="<?= base_url('pages/trx_penjualan.php') ?>">Penjualan</a>
                     <a class="collapse-item" href="<?= base_url('pages/trx_piutang.php') ?>">Peminjaman / Piutang</a>
                     <a class="collapse-item" href="<?= base_url('pages/trx_penggajian.php') ?>">Penggajian</a>
