@@ -49,6 +49,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_pelunasan'])) {
 // Ambil Referensi Akun Sumber Dana (Hanya Aset, misal Kas/Bank)
 $akun_sumber = $conn->query("SELECT * FROM tb_akun WHERE tipe = 'Aset' ORDER BY kode_akun ASC");
 
+// Ambil Rekapitulasi Total Hutang Per Pemasok (untuk notifikasi)
+$rekap_hutang = $conn->query("
+    SELECT p.nama_pemasok, COUNT(t.id) as jumlah_transaksi, SUM(t.total_harga) as total_hutang
+    FROM tb_transaksi_pembelian t 
+    JOIN tb_pemasok p ON t.id_pemasok = p.id 
+    WHERE t.status_bayar = 'Hutang' 
+    GROUP BY t.id_pemasok, p.nama_pemasok
+    ORDER BY total_hutang DESC
+");
+
+// Hitung grand total hutang
+$grand_total_query = $conn->query("SELECT SUM(total_harga) as grand_total FROM tb_transaksi_pembelian WHERE status_bayar = 'Hutang'");
+$grand_total_hutang = $grand_total_query->fetch_assoc()['grand_total'] ?? 0;
+
 // Ambil Daftar Hutang Belum Lunas
 $hutang = $conn->query("
     SELECT t.id, t.no_transaksi, t.tanggal, t.total_harga, p.nama_pemasok 
@@ -60,8 +74,72 @@ $hutang = $conn->query("
 ?>
 
 <div class="d-sm-flex align-items-center justify-content-between mb-4">
-    <h1 class="h3 mb-0 text-gray-800">Pelunasan Hutang</h1>
+    <h1 class="h3 mb-0 text-gray-800">Pelunasan Hutang Supplier</h1>
 </div>
+
+<?php if ($rekap_hutang->num_rows > 0): ?>
+<!-- NOTIFIKASI: Ringkasan Sisa Hutang Per Supplier -->
+<div class="card border-left-danger shadow mb-4">
+    <div class="card-header py-3 d-flex align-items-center" style="background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);">
+        <i class="fas fa-bell text-white mr-2"></i>
+        <h6 class="m-0 font-weight-bold text-white">
+            <i class="fas fa-exclamation-circle mr-1"></i>
+            Notifikasi: Sisa Hutang Supplier Belum Lunas
+        </h6>
+        <span class="badge badge-light ml-auto" style="font-size:0.9rem;">
+            Total: <strong>Rp <?= number_format($grand_total_hutang, 0, ',', '.') ?></strong>
+        </span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead style="background:#fdf2f2;">
+                    <tr>
+                        <th class="pl-3" style="width:40px;">#</th>
+                        <th><i class="fas fa-user mr-1 text-danger"></i> Nama Supplier</th>
+                        <th class="text-center">Jml. Transaksi</th>
+                        <th class="text-right pr-3">Total Sisa Hutang</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php
+                    $no_rekap = 1;
+                    while ($rek = $rekap_hutang->fetch_assoc()):
+                    ?>
+                    <tr class="<?= $no_rekap % 2 == 0 ? 'bg-light' : '' ?>">
+                        <td class="pl-3"><?= $no_rekap++ ?></td>
+                        <td>
+                            <span class="font-weight-bold text-dark"><?= htmlspecialchars($rek['nama_pemasok']) ?></span>
+                        </td>
+                        <td class="text-center">
+                            <span class="badge badge-warning"><?= $rek['jumlah_transaksi'] ?> transaksi</span>
+                        </td>
+                        <td class="text-right pr-3">
+                            <span class="font-weight-bold text-danger" style="font-size:1rem;">
+                                Rp <?= number_format($rek['total_hutang'], 0, ',', '.') ?>
+                            </span>
+                        </td>
+                    </tr>
+                    <?php endwhile; ?>
+                </tbody>
+                <tfoot style="background:#fdf2f2;">
+                    <tr>
+                        <td colspan="3" class="text-right font-weight-bold pl-3">Grand Total Hutang:</td>
+                        <td class="text-right pr-3 font-weight-bold text-danger" style="font-size:1.05rem;">
+                            Rp <?= number_format($grand_total_hutang, 0, ',', '.') ?>
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+<?php else: ?>
+<div class="alert alert-success shadow mb-4">
+    <i class="fas fa-check-circle mr-2"></i>
+    <strong>Semua hutang sudah lunas!</strong> Tidak ada tagihan hutang supplier yang tersisa.
+</div>
+<?php endif; ?>
 
 <div class="card shadow mb-4">
     <div class="card-header py-3">

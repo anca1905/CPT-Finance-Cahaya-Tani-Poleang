@@ -101,6 +101,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['bayar_piutang'])) {
 // Ambil Referensi Data
 $pemasok = $conn->query("SELECT * FROM tb_pemasok ORDER BY nama_pemasok ASC");
 
+// Rekapitulasi Total Panjar / Piutang Per Pemasok (menjumlahkan semua transaksi yg sama)
+$rekap_panjar = $conn->query("
+    SELECT 
+        p.id as id_pemasok,
+        p.nama_pemasok,
+        COUNT(pt.id) as jumlah_transaksi,
+        SUM(pt.nominal_panjar) as total_panjar,
+        SUM(pt.sisa_piutang) as total_sisa_piutang,
+        SUM(CASE WHEN pt.status = 'Belum Lunas' THEN 1 ELSE 0 END) as jml_belum_lunas
+    FROM tb_piutang_petani pt
+    JOIN tb_pemasok p ON pt.id_pemasok = p.id
+    WHERE pt.status = 'Belum Lunas'
+    GROUP BY p.id, p.nama_pemasok
+    HAVING total_sisa_piutang > 0
+    ORDER BY total_sisa_piutang DESC
+");
+
+// Hitung grand total piutang belum lunas
+$gt_piutang_q = $conn->query("SELECT SUM(sisa_piutang) as grand_total FROM tb_piutang_petani WHERE status = 'Belum Lunas'");
+$grand_total_piutang = $gt_piutang_q->fetch_assoc()['grand_total'] ?? 0;
+
 // Ambil Riwayat Transaksi
 $history = $conn->query("
     SELECT pt.*, p.nama_pemasok 
@@ -116,6 +137,79 @@ $history = $conn->query("
         <i class="fas fa-plus fa-sm text-white-50"></i> Catat Panjar Baru
     </button>
 </div>
+
+<?php if ($rekap_panjar && $rekap_panjar->num_rows > 0): ?>
+<!-- NOTIFIKASI: Rekapitulasi Total Panjar Per Pemasok -->
+<div class="card border-left-warning shadow mb-4">
+    <div class="card-header py-3 d-flex align-items-center" style="background: linear-gradient(135deg, #d35400 0%, #f39c12 100%);">
+        <i class="fas fa-clipboard-list text-white mr-2"></i>
+        <h6 class="m-0 font-weight-bold text-white">
+            <i class="fas fa-hand-holding-usd mr-1"></i>
+            Rekap Total Panjar / Piutang Pemasok Belum Lunas
+        </h6>
+        <span class="badge badge-light ml-auto" style="font-size:0.9rem;">
+            Total: <strong>Rp <?= number_format($grand_total_piutang, 0, ',', '.') ?></strong>
+        </span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead style="background:#fef9e7;">
+                    <tr>
+                        <th class="pl-3" style="width:40px;">#</th>
+                        <th><i class="fas fa-user mr-1 text-warning"></i> Nama Pemasok / Petani</th>
+                        <th class="text-center">Jml. Transaksi Panjar</th>
+                        <th class="text-right">Total Panjar Diberikan</th>
+                        <th class="text-right pr-3">Total Sisa Piutang</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php
+                    $no_r = 1;
+                    while ($rp = $rekap_panjar->fetch_assoc()):
+                    ?>
+                    <tr>
+                        <td class="pl-3"><?= $no_r++ ?></td>
+                        <td>
+                            <span class="font-weight-bold"><?= htmlspecialchars($rp['nama_pemasok']) ?></span>
+                            <?php if ($rp['jumlah_transaksi'] > 1): ?>
+                            <span class="badge badge-info ml-1" title="Pemasok ini memiliki <?= $rp['jumlah_transaksi'] ?> catatan panjar">
+                                <i class="fas fa-layer-group"></i> <?= $rp['jumlah_transaksi'] ?>x panjar
+                            </span>
+                            <?php endif; ?>
+                        </td>
+                        <td class="text-center">
+                            <span class="badge badge-<?= $rp['jml_belum_lunas'] > 0 ? 'danger' : 'success' ?>">
+                                <?= $rp['jml_belum_lunas'] ?> belum lunas
+                            </span>
+                        </td>
+                        <td class="text-right">
+                            Rp <?= number_format($rp['total_panjar'], 0, ',', '.') ?>
+                        </td>
+                        <td class="text-right pr-3">
+                            <strong class="text-danger">Rp <?= number_format($rp['total_sisa_piutang'], 0, ',', '.') ?></strong>
+                        </td>
+                    </tr>
+                    <?php endwhile; ?>
+                </tbody>
+                <tfoot style="background:#fef9e7;">
+                    <tr>
+                        <td colspan="4" class="text-right font-weight-bold pl-3">Grand Total Sisa Piutang Semua Pemasok:</td>
+                        <td class="text-right pr-3 font-weight-bold text-danger" style="font-size:1.05rem;">
+                            Rp <?= number_format($grand_total_piutang, 0, ',', '.') ?>
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+<?php else: ?>
+<div class="alert alert-success shadow mb-4">
+    <i class="fas fa-check-circle mr-2"></i>
+    <strong>Tidak ada piutang aktif!</strong> Semua panjar pemasok sudah lunas.
+</div>
+<?php endif; ?>
 
 <!-- Tabel Riwayat Piutang -->
 <div class="card shadow mb-4">
