@@ -42,15 +42,15 @@ $result = $conn->query("SELECT * FROM tb_users ORDER BY id DESC");
 
 <!-- Page Heading -->
 <div class="d-sm-flex align-items-center justify-content-between mb-4">
-    <h1 class="h3 mb-0 text-gray-800">Data User</h1>
+    <h1 class="h3 mb-0 text-gray-800">Data Pengguna</h1>
     <button class="btn btn-primary shadow-sm" data-toggle="modal" data-target="#addModal">
-        <i class="fas fa-plus fa-sm text-white-50"></i> Tambah User
+        <i class="fas fa-plus fa-sm text-white-50"></i> Tambah Pengguna
     </button>
 </div>
 
 <div class="card shadow mb-4">
     <div class="card-header py-3">
-        <h6 class="m-0 font-weight-bold text-primary">Daftar Pengguna Sistem (Users)</h6>
+        <h6 class="m-0 font-weight-bold text-primary">Daftar Pengguna Sistem</h6>
     </div>
     <div class="card-body">
         <div class="table-responsive">
@@ -116,7 +116,7 @@ $result = $conn->query("SELECT * FROM tb_users ORDER BY id DESC");
             <form method="POST">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title">Edit Data User</h5>
+                        <h5 class="modal-title">Edit Data Pengguna</h5>
                         <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                             <span aria-hidden="true">&times;</span>
                         </button>
@@ -160,7 +160,7 @@ $result = $conn->query("SELECT * FROM tb_users ORDER BY id DESC");
         <form method="POST">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Tambah Data User</h5>
+                    <h5 class="modal-title">Tambah Data Pengguna</h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>

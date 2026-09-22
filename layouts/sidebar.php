@@ -20,7 +20,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
     <li class="nav-item <?= $current_page == 'dashboard.php' ? 'active' : '' ?>">
         <a class="nav-link" href="<?= base_url('pages/dashboard.php') ?>">
             <i class="fas fa-fw fa-tachometer-alt"></i>
-            <span>Dashboard</span></a>
+            <span>Dasbor</span></a>
     </li>
 
     <!-- Divider -->
@@ -29,7 +29,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
     <?php if ($role == 'Admin'): ?>
         <!-- Heading -->
         <div class="sidebar-heading">
-            Admin Area
+            Area Admin
         </div>
         <!-- Nav Item - Data Master Menu -->
         <li class="nav-item">
@@ -45,7 +45,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
                     <a class="collapse-item" href="<?= base_url('pages/master_pelanggan.php') ?>">Data Pelanggan</a>
                     <a class="collapse-item" href="<?= base_url('pages/master_karyawan.php') ?>">Data Karyawan</a>
                     <a class="collapse-item" href="<?= base_url('pages/master_barang.php') ?>">Data Barang</a>
-                    <a class="collapse-item" href="<?= base_url('pages/master_user.php') ?>">Data User</a>
+                    <a class="collapse-item" href="<?= base_url('pages/master_user.php') ?>">Data Pengguna</a>
                 </div>
             </div>
         </li>
@@ -53,7 +53,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <!-- <li class="nav-item">
                 <a class="nav-link" href="<?= base_url('pages/maintenance.php') ?>">
                     <i class="fas fa-fw fa-cogs"></i>
-                    <span>Maintenance DB</span></a>
+                    <span>Pemeliharaan DB</span></a>
             </li> -->
         <hr class="sidebar-divider">
     <?php endif; ?>
@@ -97,7 +97,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
 
     <!-- Heading -->
     <div class="sidebar-heading">
-        Reporting
+        Pelaporan
     </div>
     <!-- Nav Item - Laporan -->
     <li class="nav-item">
@@ -160,7 +160,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
                         aria-labelledby="userDropdown">
                         <a class="dropdown-item" href="#" data-toggle="modal" data-target="#logoutModal">
                             <i class="fas fa-sign-out-alt fa-sm fa-fw mr-2 text-gray-400"></i>
-                            Logout
+                            Keluar
                         </a>
                     </div>
                 </li>

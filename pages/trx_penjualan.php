@@ -189,7 +189,7 @@ $history = $conn->query("
                                 <input type="date" class="form-control" name="tanggal" value="<?= date('Y-m-d') ?>" required>
                             </div>
                             <div class="form-group">
-                                <label>Pelanggan (Customer)</label>
+                                <label>Pelanggan</label>
                                 <select class="form-control" name="id_pelanggan" required>
                                     <option value="">-- Pilih Pelanggan --</option>
                                     <?php while ($p = $pelanggan->fetch_assoc()): ?>

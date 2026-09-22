@@ -74,17 +74,17 @@ $hutang = $conn->query("
 ?>
 
 <div class="d-sm-flex align-items-center justify-content-between mb-4">
-    <h1 class="h3 mb-0 text-gray-800">Pelunasan Hutang Supplier</h1>
+    <h1 class="h3 mb-0 text-gray-800">Pelunasan Hutang Pemasok</h1>
 </div>
 
 <?php if ($rekap_hutang->num_rows > 0): ?>
-<!-- NOTIFIKASI: Ringkasan Sisa Hutang Per Supplier -->
+<!-- NOTIFIKASI: Ringkasan Sisa Hutang Per Pemasok -->
 <div class="card border-left-danger shadow mb-4">
     <div class="card-header py-3 d-flex align-items-center" style="background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);">
         <i class="fas fa-bell text-white mr-2"></i>
         <h6 class="m-0 font-weight-bold text-white">
             <i class="fas fa-exclamation-circle mr-1"></i>
-            Notifikasi: Sisa Hutang Supplier Belum Lunas
+            Notifikasi: Sisa Hutang Pemasok Belum Lunas
         </h6>
         <span class="badge badge-light ml-auto" style="font-size:0.9rem;">
             Total: <strong>Rp <?= number_format($grand_total_hutang, 0, ',', '.') ?></strong>
@@ -96,7 +96,7 @@ $hutang = $conn->query("
                 <thead style="background:#fdf2f2;">
                     <tr>
                         <th class="pl-3" style="width:40px;">#</th>
-                        <th><i class="fas fa-user mr-1 text-danger"></i> Nama Supplier</th>
+                        <th><i class="fas fa-user mr-1 text-danger"></i> Nama Pemasok</th>
                         <th class="text-center">Jml. Transaksi</th>
                         <th class="text-right pr-3">Total Sisa Hutang</th>
                     </tr>
@@ -137,7 +137,7 @@ $hutang = $conn->query("
 <?php else: ?>
 <div class="alert alert-success shadow mb-4">
     <i class="fas fa-check-circle mr-2"></i>
-    <strong>Semua hutang sudah lunas!</strong> Tidak ada tagihan hutang supplier yang tersisa.
+    <strong>Semua hutang sudah lunas!</strong> Tidak ada tagihan hutang pemasok yang tersisa.
 </div>
 <?php endif; ?>
 

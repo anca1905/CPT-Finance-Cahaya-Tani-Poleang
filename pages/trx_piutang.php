@@ -98,6 +98,65 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['bayar_piutang'])) {
     }
 }
 
+// Proses Pelunasan Piutang (Rekap)
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['bayar_rekap_piutang'])) {
+    $id_pemasok = (int)$_POST['id_pemasok'];
+    $nominal_bayar = (float)$_POST['nominal_bayar'];
+
+    if ($nominal_bayar > 0) {
+        $q = $conn->query("
+            SELECT pt.*, p.nama_pemasok 
+            FROM tb_piutang_petani pt 
+            JOIN tb_pemasok p ON pt.id_pemasok = p.id 
+            WHERE pt.id_pemasok = $id_pemasok AND pt.status = 'Belum Lunas'
+            ORDER BY pt.tanggal ASC, pt.id ASC
+        ");
+
+        if ($q->num_rows > 0) {
+            $conn->begin_transaction();
+            try {
+                $sisa_bayar = $nominal_bayar;
+                $nama_pemasok = '';
+                
+                while($row = $q->fetch_assoc()) {
+                    if($sisa_bayar <= 0) break;
+                    
+                    $nama_pemasok = $row['nama_pemasok'];
+                    $bayar_untuk_ini = min($sisa_bayar, $row['sisa_piutang']);
+                    
+                    $sisa_baru = $row['sisa_piutang'] - $bayar_untuk_ini;
+                    $status_baru = ($sisa_baru <= 0) ? 'Lunas' : 'Belum Lunas';
+                    
+                    $conn->query("UPDATE tb_piutang_petani SET sisa_piutang = $sisa_baru, status = '$status_baru' WHERE id = " . $row['id']);
+                    
+                    $sisa_bayar -= $bayar_untuk_ini;
+                }
+                
+                // Jurnal Pelunasan
+                $no_transaksi = 'LUNAS-P-REKAP-' . date('YmdHis');
+                $tanggal_lunas = date('Y-m-d');
+                $deskripsi = "Pembayaran Piutang Rekap dari Pemasok: $nama_pemasok (Ref: $no_transaksi)";
+                
+                $conn->query("INSERT INTO tb_jurnal_umum (no_referensi, tanggal, deskripsi, total_debit, total_kredit) VALUES ('$no_transaksi', '$tanggal_lunas', '$deskripsi', $nominal_bayar, $nominal_bayar)");
+                $id_jurnal_lunas = $conn->insert_id;
+
+                $conn->query("INSERT INTO tb_jurnal_detail (id_jurnal, kode_akun, posisi, nominal) VALUES ($id_jurnal_lunas, '111', 'Debit', $nominal_bayar)");
+                $conn->query("INSERT INTO tb_jurnal_detail (id_jurnal, kode_akun, posisi, nominal) VALUES ($id_jurnal_lunas, '112', 'Kredit', $nominal_bayar)");
+
+                $conn->commit();
+                echo "<script>alert('Pembayaran piutang berhasil dicatat!'); window.location.href='trx_piutang.php';</script>";
+                exit;
+            } catch (Exception $e) {
+                $conn->rollback();
+                echo "<script>alert('Gagal melunasi: " . $e->getMessage() . "');</script>";
+            }
+        }
+    } else {
+        echo "<script>alert('Nominal harus lebih dari 0');</script>";
+    }
+}
+
+
 // Ambil Referensi Data
 $pemasok = $conn->query("SELECT * FROM tb_pemasok ORDER BY nama_pemasok ASC");
 
@@ -160,13 +219,98 @@ $history = $conn->query("
                         <th><i class="fas fa-user mr-1 text-warning"></i> Nama Pemasok / Petani</th>
                         <th class="text-center">Jml. Transaksi Panjar</th>
                         <th class="text-right">Total Panjar Diberikan</th>
-                        <th class="text-right pr-3">Total Sisa Piutang</th>
+                        <th class="text-right">Total Sisa Piutang</th>
+                        <th class="text-center pr-3">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php
                     $no_r = 1;
+                    $modals_rekap = '';
                     while ($rp = $rekap_panjar->fetch_assoc()):
+                        // Modal detail riwayat panjar per pemasok
+                        $modals_rekap .= '
+                        <div class="modal fade" id="modalDetailRekap' . $rp['id_pemasok'] . '" tabindex="-1" role="dialog" aria-hidden="true">
+                            <div class="modal-dialog modal-lg" role="document">
+                                <div class="modal-content">
+                                    <div class="modal-header bg-info text-white">
+                                        <h5 class="modal-title">Detail Panjar Pemasok: ' . htmlspecialchars($rp['nama_pemasok']) . '</h5>
+                                        <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                                            <span aria-hidden="true">&times;</span>
+                                        </button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-bordered table-sm">
+                                                <thead class="thead-light">
+                                                    <tr>
+                                                        <th>Tanggal</th>
+                                                        <th>Nominal Panjar</th>
+                                                        <th>Sisa Piutang</th>
+                                                        <th>Status</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>';
+                        
+                        // Fetch details for this pemasok
+                        $q_det = $conn->query("SELECT * FROM tb_piutang_petani WHERE id_pemasok = " . $rp['id_pemasok'] . " ORDER BY tanggal DESC, id DESC");
+                        while($det = $q_det->fetch_assoc()) {
+                            $modals_rekap .= '<tr>
+                                <td>' . date('d/m/Y', strtotime($det['tanggal'])) . '</td>
+                                <td>Rp ' . number_format($det['nominal_panjar'], 0, ',', '.') . '</td>
+                                <td>Rp ' . number_format($det['sisa_piutang'], 0, ',', '.') . '</td>
+                                <td><span class="badge badge-' . ($det['status'] == 'Lunas' ? 'success' : 'danger') . '">' . htmlspecialchars($det['status']) . '</span></td>
+                            </tr>';
+                        }
+                        
+                        $modals_rekap .= '      </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Tutup</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>';
+
+                        // Modal Bayar Rekap
+                        $modals_rekap .= '
+                        <div class="modal fade" id="modalBayarRekap' . $rp['id_pemasok'] . '" tabindex="-1" role="dialog" aria-hidden="true">
+                            <div class="modal-dialog" role="document">
+                                <form method="POST">
+                                    <div class="modal-content">
+                                        <div class="modal-header bg-success text-white">
+                                            <h5 class="modal-title">Pembayaran Total Piutang / Panjar</h5>
+                                            <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                                                <span aria-hidden="true">&times;</span>
+                                            </button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <input type="hidden" name="id_pemasok" value="' . $rp['id_pemasok'] . '">
+                                            <div class="form-group">
+                                                <label>Nama Pemasok</label>
+                                                <input type="text" class="form-control" value="' . htmlspecialchars($rp['nama_pemasok']) . '" readonly>
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Total Sisa Piutang Saat Ini</label>
+                                                <input type="text" class="form-control" value="Rp ' . number_format($rp['total_sisa_piutang'], 0, ',', '.') . '" readonly>
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Jumlah Bayar (Rp)</label>
+                                                <input type="number" class="form-control" name="nominal_bayar" max="' . $rp['total_sisa_piutang'] . '" required>
+                                                <small class="text-muted">Masukkan nominal yang dibayar. Akan mengurangi sisa piutang secara berurutan dari yang paling awal.</small>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
+                                            <button type="submit" name="bayar_rekap_piutang" class="btn btn-success">Simpan Pembayaran</button>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>';
+
                     ?>
                     <tr>
                         <td class="pl-3"><?= $no_r++ ?></td>
@@ -186,8 +330,12 @@ $history = $conn->query("
                         <td class="text-right">
                             Rp <?= number_format($rp['total_panjar'], 0, ',', '.') ?>
                         </td>
-                        <td class="text-right pr-3">
+                        <td class="text-right">
                             <strong class="text-danger">Rp <?= number_format($rp['total_sisa_piutang'], 0, ',', '.') ?></strong>
+                        </td>
+                        <td class="text-center pr-3">
+                            <button type="button" class="btn btn-sm btn-info" data-toggle="modal" data-target="#modalDetailRekap<?= $rp['id_pemasok'] ?>" title="Detail"><i class="fas fa-list"></i> Detail</button>
+                            <button type="button" class="btn btn-sm btn-success" data-toggle="modal" data-target="#modalBayarRekap<?= $rp['id_pemasok'] ?>" title="Bayar"><i class="fas fa-money-bill-wave"></i> Bayar</button>
                         </td>
                     </tr>
                     <?php endwhile; ?>
@@ -195,9 +343,10 @@ $history = $conn->query("
                 <tfoot style="background:#fef9e7;">
                     <tr>
                         <td colspan="4" class="text-right font-weight-bold pl-3">Grand Total Sisa Piutang Semua Pemasok:</td>
-                        <td class="text-right pr-3 font-weight-bold text-danger" style="font-size:1.05rem;">
+                        <td class="text-right font-weight-bold text-danger" style="font-size:1.05rem;">
                             Rp <?= number_format($grand_total_piutang, 0, ',', '.') ?>
                         </td>
+                        <td></td>
                     </tr>
                 </tfoot>
             </table>
@@ -303,6 +452,7 @@ $history = $conn->query("
 </div>
 
 <?= $modals ?? '' ?>
+<?= $modals_rekap ?? '' ?>
 
 <!-- Modal Tambah Piutang -->
 <div class="modal fade" id="modalTransaksi" tabindex="-1" role="dialog" aria-hidden="true">
